@@ -1,7 +1,6 @@
 namespace WebApi.Responses;
 
-record GetUp()
+record GetUpResponse()
 {
-    public int Code => 200;
     public string Message => "pong";
 }

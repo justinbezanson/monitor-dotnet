@@ -23,7 +23,7 @@ var summaries = new[]
 
 app.MapGet("/up", () =>
     {
-        var up = new GetUp();
+        var up = new GetUpResponse();
         return up;
     })
     .WithName("GetUp");
