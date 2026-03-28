@@ -1,7 +1,14 @@
 <script setup lang="ts">
-import HelloWorld from './components/HelloWorld.vue'
+import Button from '@/components/ui/button/Button.vue'
 </script>
 
 <template>
-  <HelloWorld />
+  <div class="flex justify-center">
+    <div class="text-red-500">
+      Hello World!
+    </div>
+    <div>
+      <Button>Test</Button>
+    </div>
+  </div>
 </template>
