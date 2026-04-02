@@ -20,6 +20,7 @@ builder.Services.AddIdentityCore<IdentityUser>()
 
 builder.Services.AddAuthentication().AddBearerToken(IdentityConstants.BearerScheme);
 builder.Services.AddAuthorization();
+builder.Services.AddControllers();
 
 var app = builder.Build();
 
@@ -34,6 +35,7 @@ app.UseHttpsRedirection();
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapIdentityApi<IdentityUser>();
+app.MapControllers();
 
 app.MapGet("/claims", (HttpContext httpContext) =>
 {
