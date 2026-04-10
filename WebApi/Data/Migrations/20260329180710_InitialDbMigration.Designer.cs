@@ -8,7 +8,7 @@ using WebApi;
 
 #nullable disable
 
-namespace WebApi.Migrations
+namespace WebApi.Data.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
     [Migration("20260329180710_InitialDbMigration")]
