@@ -10,6 +10,16 @@ var builder = WebApplication.CreateBuilder(args);
 
 // --- Services Configuration ---
 
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowAll", policy =>
+    {
+        policy.AllowAnyOrigin()
+              .AllowAnyMethod()
+              .AllowAnyHeader();
+    });
+});
+
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
 {
     options.UseSqlite(builder.Configuration.GetConnectionString("MonitorDotNetDb"));
@@ -68,16 +78,21 @@ var app = builder.Build();
 
 // --- Middleware Pipeline ---
 
+// Enable CORS at the very beginning
+app.UseCors(policy => policy.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod());
+
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
-    // Scalar is a great choice for .NET 10 / OpenAPI 3.1
     app.MapScalarApiReference();
 }
 
-app.UseHttpsRedirection();
+// Optional: In Development, avoid redirects that can mess up CORS preflights
+if (!app.Environment.IsDevelopment())
+{
+    app.UseHttpsRedirection();
+}
 
-// Order matters: Authentication must come before Authorization
 app.UseAuthentication();
 app.UseAuthorization();
 
