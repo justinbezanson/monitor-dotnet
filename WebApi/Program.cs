@@ -4,7 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi; // v2.0.0 puts models here
 using Scalar.AspNetCore;
 using WebApi;
-using WebApi.Responses;
+using WebApi.Status.Responses;
 
 var builder = WebApplication.CreateBuilder(args);
 

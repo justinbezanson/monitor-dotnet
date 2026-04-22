@@ -1,18 +1,40 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import { useMonitorStore } from '@/stores/monitors'
 import { 
   Monitor, Globe, Activity, ShieldAlert, Settings, LogOut, Search, Bell, 
   ChevronDown, CheckCircle2, AlertCircle, XCircle, Clock, Zap, Link,
-  Menu, X, ArrowUpRight
+  Menu, X, ArrowUpRight, Plus, Trash2, Loader2, ExternalLink, Pencil
 } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import ThemeToggle from '@/components/ThemeToggle.vue'
 
 const router = useRouter()
 const authStore = useAuthStore()
+const monitorStore = useMonitorStore()
 const isSidebarOpen = ref(true)
+const isAddModalOpen = ref(false)
+const isEditModalOpen = ref(false)
+
+// Add Monitor Form
+const newMonitor = ref({
+  name: '',
+  url: '',
+  intervalSeconds: 60
+})
+
+// Edit Monitor Form
+const editingMonitor = ref({
+  id: '',
+  name: '',
+  url: '',
+  intervalSeconds: 60,
+  isEnabled: true
+})
 
 const navItems = [
   { name: 'Dashboard', icon: Activity, active: true },
@@ -22,35 +44,43 @@ const navItems = [
   { name: 'Settings', icon: Settings, active: false },
 ]
 
-const stats = [
-  { label: 'Overall Uptime', value: '99.98%', icon: CheckCircle2, trend: 'stable', status: 'normal' },
-  { label: 'Avg. Response', value: '245ms', icon: Clock, trend: 'down', status: 'normal' },
-  { label: 'Total Requests', value: '1.2M', icon: Zap, trend: 'up', status: 'normal' },
-  { label: 'Active Incidents', value: '1', icon: ShieldAlert, trend: 'up', status: 'critical' },
-]
+onMounted(async () => {
+  await monitorStore.fetchMonitors()
+})
 
-const monitors = [
-  { name: 'Main API Gateway', url: 'https://api.monitor.net/v1', status: 'online', method: 'GET', responseTime: '124ms', lastChecked: '12s ago' },
-  { name: 'Customer Portal', url: 'https://portal.monitor.net', status: 'online', method: 'GET', responseTime: '450ms', lastChecked: '45s ago' },
-  { name: 'Auth Service', url: 'https://auth.monitor.net', status: 'offline', method: 'POST', responseTime: '0ms', lastChecked: '2m ago' },
-  { name: 'Legacy Dashboard', url: 'https://old.monitor.net', status: 'warning', method: 'GET', responseTime: '1200ms', lastChecked: '1m ago' },
-  { name: 'Static Assets CDN', url: 'https://cdn.monitor.net', status: 'online', method: 'HEAD', responseTime: '45ms', lastChecked: '10s ago' },
-]
+const stats = computed(() => {
+  const monitors = monitorStore.monitors
+  const total = monitors.length
+  const online = monitors.filter(m => m.currentStatus.toLowerCase() === 'online').length
+  const offline = monitors.filter(m => m.currentStatus.toLowerCase() === 'offline').length
+  const warning = monitors.filter(m => m.currentStatus.toLowerCase() === 'warning').length
+  
+  const uptime = total > 0 ? ((online / total) * 100).toFixed(2) + '%' : '100%'
+  
+  return [
+    { label: 'Overall Uptime', value: uptime, icon: CheckCircle2, trend: 'stable', status: 'normal' },
+    { label: 'Online', value: online.toString(), icon: Zap, trend: 'up', status: 'normal' },
+    { label: 'Offline', value: offline.toString(), icon: XCircle, trend: 'none', status: offline > 0 ? 'critical' : 'normal' },
+    { label: 'Warning', value: warning.toString(), icon: AlertCircle, trend: 'none', status: warning > 0 ? 'warning' : 'normal' },
+  ]
+})
 
 const getStatusIcon = (status: string) => {
-  switch (status) {
+  switch (status.toLowerCase()) {
     case 'online': return CheckCircle2
     case 'warning': return AlertCircle
     case 'offline': return XCircle
+    case 'pending': return Clock
     default: return CheckCircle2
   }
 }
 
 const getStatusColor = (status: string) => {
-  switch (status) {
+  switch (status.toLowerCase()) {
     case 'online': return 'text-green-500 bg-green-500/10'
     case 'warning': return 'text-yellow-500 bg-yellow-500/10'
     case 'offline': return 'text-red-500 bg-red-500/10'
+    case 'pending': return 'text-blue-500 bg-blue-500/10'
     default: return 'text-muted-foreground bg-muted'
   }
 }
@@ -58,6 +88,74 @@ const getStatusColor = (status: string) => {
 const handleLogout = () => {
   authStore.logout()
   router.push('/login')
+}
+
+const handleAddMonitor = async () => {
+  monitorStore.error = null
+  const success = await monitorStore.createMonitor({
+    name: newMonitor.value.name,
+    url: newMonitor.value.url,
+    intervalSeconds: newMonitor.value.intervalSeconds
+  })
+  
+  if (success) {
+    isAddModalOpen.value = false
+    newMonitor.value = { name: '', url: '', intervalSeconds: 60 }
+  }
+}
+
+const handleDeleteMonitor = async (id: string) => {
+  monitorStore.error = null
+  if (confirm('Are you sure you want to delete this monitor?')) {
+    await monitorStore.deleteMonitor(id)
+  }
+}
+
+const handleEditMonitor = (monitor: any) => {
+  monitorStore.error = null
+  editingMonitor.value = {
+    id: monitor.id,
+    name: monitor.name,
+    url: monitor.url,
+    intervalSeconds: monitor.intervalSeconds,
+    isEnabled: monitor.isEnabled
+  }
+  isEditModalOpen.value = true
+}
+
+const handleUpdateMonitor = async () => {
+  monitorStore.error = null
+  const success = await monitorStore.updateMonitor(editingMonitor.value.id, {
+    name: editingMonitor.value.name,
+    url: editingMonitor.value.url,
+    intervalSeconds: editingMonitor.value.intervalSeconds,
+    isEnabled: editingMonitor.value.isEnabled
+  })
+  
+  if (success) {
+    isEditModalOpen.value = false
+  }
+}
+
+const closeAddModal = () => {
+  isAddModalOpen.value = false
+  monitorStore.error = null
+}
+
+const closeEditModal = () => {
+  isEditModalOpen.value = false
+  monitorStore.error = null
+}
+
+const formatLastChecked = (date: string | null) => {
+  if (!date) return 'Never'
+  const now = new Date()
+  const checked = new Date(date)
+  const diff = Math.floor((now.getTime() - checked.getTime()) / 1000)
+  
+  if (diff < 60) return `${diff}s ago`
+  if (diff < 3600) return `${Math.floor(diff / 60)}m ago`
+  return checked.toLocaleTimeString()
 }
 </script>
 
@@ -96,10 +194,10 @@ const handleLogout = () => {
         <div class="pt-4 border-t space-y-1">
           <div class="flex items-center gap-3 px-3 py-4 mb-2">
             <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center text-primary border border-primary/10">
-              <span class="font-bold">JD</span>
+              <span class="font-bold">{{ authStore.user?.email?.[0].toUpperCase() || 'U' }}</span>
             </div>
             <div class="flex-1 min-w-0">
-              <p class="text-sm font-semibold truncate">{{ authStore.user?.email || 'Justin Doe' }}</p>
+              <p class="text-sm font-semibold truncate">{{ authStore.user?.email || 'User' }}</p>
               <p class="text-xs text-muted-foreground truncate">System Administrator</p>
             </div>
           </div>
@@ -139,7 +237,7 @@ const handleLogout = () => {
           <div class="h-8 w-px bg-border/50 mx-1"></div>
           <Button variant="ghost" class="hidden sm:flex items-center gap-2 font-normal rounded-xl px-2">
             <div class="w-8 h-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center font-bold text-xs border border-primary/20">
-              JD
+              {{ authStore.user?.email?.[0].toUpperCase() || 'U' }}
             </div>
             <ChevronDown class="h-4 w-4 text-muted-foreground" />
           </Button>
@@ -154,9 +252,19 @@ const handleLogout = () => {
             <p class="text-muted-foreground mt-1">Real-time status for your global URL endpoints.</p>
           </div>
           <div class="flex gap-2">
-            <Button variant="outline" class="rounded-xl">Configure Alerts</Button>
-            <Button class="rounded-xl shadow-lg shadow-primary/20">Add New Monitor</Button>
+            <Button variant="outline" class="rounded-xl" @click="monitorStore.fetchMonitors()" :disabled="monitorStore.loading">
+              <Loader2 v-if="monitorStore.loading" class="w-4 h-4 mr-2 animate-spin" />
+              Refresh
+            </Button>
+            <Button class="rounded-xl shadow-lg shadow-primary/20" @click="isAddModalOpen = true">
+              <Plus class="w-4 h-4 mr-2" />
+              Add New Monitor
+            </Button>
           </div>
+        </div>
+
+        <div v-if="monitorStore.error" class="p-4 bg-red-500/10 border border-red-500/20 rounded-xl text-red-500 text-sm">
+          {{ monitorStore.error }}
         </div>
 
         <!-- Summary Stats -->
@@ -174,23 +282,11 @@ const handleLogout = () => {
               ]">
                 <component :is="stat.icon" class="w-6 h-6" />
               </div>
-              <div class="flex flex-col items-end">
-                <span class="text-[10px] uppercase font-bold tracking-wider text-muted-foreground">Status</span>
-                <span :class="['text-xs font-bold', stat.status === 'critical' ? 'text-red-500' : 'text-green-500']">
-                  {{ stat.status === 'critical' ? 'Alert' : 'Stable' }}
-                </span>
-              </div>
             </div>
             <div class="space-y-1 relative z-10">
               <p class="text-sm font-medium text-muted-foreground">{{ stat.label }}</p>
               <div class="flex items-baseline gap-2">
                 <span class="text-2xl font-bold tracking-tight">{{ stat.value }}</span>
-                <span v-if="stat.trend === 'up'" class="text-xs font-bold text-green-500 flex items-center gap-0.5">
-                   +2.4%
-                </span>
-                <span v-if="stat.trend === 'down'" class="text-xs font-bold text-red-500 flex items-center gap-0.5">
-                   -1.2%
-                </span>
               </div>
             </div>
             <!-- Decorative Background Element -->
@@ -205,18 +301,7 @@ const handleLogout = () => {
           <div class="p-6 border-b flex items-center justify-between gap-4 flex-wrap bg-card/50">
             <div class="space-y-1">
               <h3 class="font-bold text-lg">Active Monitors</h3>
-              <p class="text-sm text-muted-foreground">Tracking response times and status codes across 12 endpoints.</p>
-            </div>
-            <div class="flex items-center gap-2">
-              <div class="relative">
-                <Search class="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-                <input 
-                  type="text" 
-                  placeholder="Filter list..." 
-                  class="pl-8 pr-3 py-1.5 bg-background border rounded-lg text-xs focus:outline-none focus:ring-1 focus:ring-primary border-border/50 w-48"
-                />
-              </div>
-              <Button variant="outline" size="sm" class="rounded-lg">Export CSV</Button>
+              <p class="text-sm text-muted-foreground">Tracking {{ monitorStore.monitors.length }} endpoints.</p>
             </div>
           </div>
           <div class="overflow-x-auto">
@@ -225,55 +310,47 @@ const handleLogout = () => {
                 <tr class="bg-muted/30 text-muted-foreground font-semibold border-b">
                   <th class="px-6 py-4">Endpoint</th>
                   <th class="px-6 py-4">Status</th>
-                  <th class="px-6 py-4 text-center">Method</th>
-                  <th class="px-6 py-4">Resp. Time</th>
+                  <th class="px-6 py-4 text-center">Interval</th>
                   <th class="px-6 py-4">Last Check</th>
                   <th class="px-6 py-4 text-right">Actions</th>
                 </tr>
               </thead>
               <tbody class="divide-y divide-border/50">
-                <tr v-for="monitor in monitors" :key="monitor.name" class="hover:bg-muted/20 transition-all group">
+                <tr v-if="monitorStore.monitors.length === 0">
+                  <td colspan="5" class="px-6 py-12 text-center text-muted-foreground">
+                    No monitors found. Click "Add New Monitor" to get started.
+                  </td>
+                </tr>
+                <tr v-for="monitor in monitorStore.monitors" :key="monitor.id" class="hover:bg-muted/20 transition-all group">
                   <td class="px-6 py-4">
                     <div class="flex flex-col">
                       <span class="font-bold text-foreground/90">{{ monitor.name }}</span>
-                      <span class="text-xs text-muted-foreground flex items-center gap-1 group-hover:text-primary transition-colors">
+                      <a :href="monitor.url" target="_blank" class="text-xs text-muted-foreground flex items-center gap-1 hover:text-primary transition-colors">
                         <Link class="w-3 h-3" />
                         {{ monitor.url }}
-                      </span>
+                        <ExternalLink class="w-2 h-2" />
+                      </a>
                     </div>
                   </td>
                   <td class="px-6 py-4">
-                    <span :class="['inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider transition-all', getStatusColor(monitor.status)]">
-                      <component :is="getStatusIcon(monitor.status)" class="w-3.5 h-3.5" />
-                      {{ monitor.status }}
+                    <span :class="['inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider transition-all', getStatusColor(monitor.currentStatus)]">
+                      <component :is="getStatusIcon(monitor.currentStatus)" class="w-3.5 h-3.5" />
+                      {{ monitor.currentStatus }}
                     </span>
                   </td>
                   <td class="px-6 py-4 text-center">
                     <span class="px-2 py-0.5 rounded border border-border bg-background text-[10px] font-mono font-bold">
-                      {{ monitor.method }}
+                      {{ monitor.intervalSeconds }}s
                     </span>
                   </td>
-                  <td class="px-6 py-4">
-                    <div class="flex items-center gap-3">
-                      <span :class="['font-mono font-medium', parseInt(monitor.responseTime) > 1000 ? 'text-red-500' : parseInt(monitor.responseTime) > 300 ? 'text-yellow-500' : 'text-green-500']">
-                        {{ monitor.responseTime }}
-                      </span>
-                      <div class="h-1.5 w-16 bg-secondary rounded-full overflow-hidden hidden md:block">
-                        <div 
-                          class="h-full bg-primary transition-all duration-500" 
-                          :style="{ width: monitor.status === 'offline' ? '0%' : (Math.min(parseInt(monitor.responseTime) / 10, 100) + '%') }"
-                        ></div>
-                      </div>
-                    </div>
-                  </td>
-                  <td class="px-6 py-4 text-muted-foreground font-mono text-xs">{{ monitor.lastChecked }}</td>
+                  <td class="px-6 py-4 text-muted-foreground font-mono text-xs">{{ formatLastChecked(monitor.lastCheckedAt) }}</td>
                   <td class="px-6 py-4 text-right">
                     <div class="flex items-center justify-end gap-1">
-                      <Button variant="ghost" size="icon" class="h-8 w-8 rounded-lg hover:text-primary">
-                        <Activity class="h-4 w-4" />
+                      <Button variant="ghost" size="icon" class="h-8 w-8 rounded-lg hover:text-primary" @click="handleEditMonitor(monitor)">
+                        <Pencil class="h-4 w-4" />
                       </Button>
-                      <Button variant="ghost" size="icon" class="h-8 w-8 rounded-lg hover:text-primary">
-                        <ArrowUpRight class="h-4 w-4" />
+                      <Button variant="ghost" size="icon" class="h-8 w-8 rounded-lg hover:text-red-500" @click="handleDeleteMonitor(monitor.id)">
+                        <Trash2 class="h-4 w-4" />
                       </Button>
                     </div>
                   </td>
@@ -281,13 +358,91 @@ const handleLogout = () => {
               </tbody>
             </table>
           </div>
-          <div class="p-4 border-t bg-muted/10 text-center">
-            <Button variant="link" size="sm" class="text-muted-foreground font-medium hover:text-primary">
-              View all 12 endpoints
-            </Button>
-          </div>
         </div>
       </main>
+    </div>
+
+    <!-- Add Monitor Modal -->
+    <div v-if="isAddModalOpen" class="fixed inset-0 z-[100] flex items-center justify-center p-4">
+      <div class="absolute inset-0 bg-background/80 backdrop-blur-sm" @click="closeAddModal"></div>
+      <div class="relative w-full max-w-md bg-card border rounded-2xl shadow-2xl p-6 space-y-6">
+        <div class="flex items-center justify-between">
+          <h3 class="text-xl font-bold">Add New Monitor</h3>
+          <Button variant="ghost" size="icon" class="rounded-xl" @click="closeAddModal">
+            <X class="h-5 w-5" />
+          </Button>
+        </div>
+
+        <div v-if="monitorStore.error" class="p-3 bg-red-500/10 border border-red-500/20 rounded-xl text-red-500 text-xs">
+          {{ monitorStore.error }}
+        </div>
+
+        <div class="space-y-4">
+          <div class="space-y-2">
+            <Label for="name">Friendly Name</Label>
+            <Input id="name" v-model="newMonitor.name" placeholder="My Awesome API" />
+          </div>
+          <div class="space-y-2">
+            <Label for="url">URL</Label>
+            <Input id="url" v-model="newMonitor.url" placeholder="https://api.example.com/health" />
+          </div>
+          <div class="space-y-2">
+            <Label for="interval">Check Interval (seconds)</Label>
+            <Input id="interval" type="number" v-model="newMonitor.intervalSeconds" />
+          </div>
+        </div>
+
+        <div class="flex gap-3 pt-2">
+          <Button variant="outline" class="flex-1 rounded-xl" @click="closeAddModal">Cancel</Button>
+          <Button class="flex-1 rounded-xl shadow-lg shadow-primary/20" @click="handleAddMonitor" :disabled="monitorStore.loading">
+            <Loader2 v-if="monitorStore.loading" class="w-4 h-4 mr-2 animate-spin" />
+            Create Monitor
+          </Button>
+        </div>
+      </div>
+    </div>
+    <!-- Edit Monitor Modal -->
+    <div v-if="isEditModalOpen" class="fixed inset-0 z-[100] flex items-center justify-center p-4">
+      <div class="absolute inset-0 bg-background/80 backdrop-blur-sm" @click="closeEditModal"></div>
+      <div class="relative w-full max-w-md bg-card border rounded-2xl shadow-2xl p-6 space-y-6">
+        <div class="flex items-center justify-between">
+          <h3 class="text-xl font-bold">Edit Monitor</h3>
+          <Button variant="ghost" size="icon" class="rounded-xl" @click="closeEditModal">
+            <X class="h-5 w-5" />
+          </Button>
+        </div>
+
+        <div v-if="monitorStore.error" class="p-3 bg-red-500/10 border border-red-500/20 rounded-xl text-red-500 text-xs">
+          {{ monitorStore.error }}
+        </div>
+
+        <div class="space-y-4">
+          <div class="space-y-2">
+            <Label for="edit-name">Friendly Name</Label>
+            <Input id="edit-name" v-model="editingMonitor.name" />
+          </div>
+          <div class="space-y-2">
+            <Label for="edit-url">URL</Label>
+            <Input id="edit-url" v-model="editingMonitor.url" />
+          </div>
+          <div class="space-y-2">
+            <Label for="edit-interval">Check Interval (seconds)</Label>
+            <Input id="edit-interval" type="number" v-model="editingMonitor.intervalSeconds" />
+          </div>
+          <div class="flex items-center gap-2 pt-2">
+            <input type="checkbox" id="edit-enabled" v-model="editingMonitor.isEnabled" class="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary" />
+            <Label for="edit-enabled" class="cursor-pointer">Monitoring Enabled</Label>
+          </div>
+        </div>
+
+        <div class="flex gap-3 pt-2">
+          <Button variant="outline" class="flex-1 rounded-xl" @click="closeEditModal">Cancel</Button>
+          <Button class="flex-1 rounded-xl shadow-lg shadow-primary/20" @click="handleUpdateMonitor" :disabled="monitorStore.loading">
+            <Loader2 v-if="monitorStore.loading" class="w-4 h-4 mr-2 animate-spin" />
+            Save Changes
+          </Button>
+        </div>
+      </div>
     </div>
   </div>
 </template>

@@ -2,6 +2,7 @@ using WebApi.Common;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.OpenApi;
 using WebApi.Status.Endpoints;
+using WebApi.Monitors.Endpoints;
 
 namespace WebApi;
 
@@ -12,7 +13,8 @@ public static class Endpoints
         // Note: You might want to call MapStatusEndpoints here 
         // if it's not being called elsewhere.
         var endpoints = app.MapGroup("");
-        endpoints.MapStatusEndpoints(); 
+        endpoints.MapStatusEndpoints();
+        endpoints.MapMonitorEndpoints();
 
         /*endpoints.MapAuthenticationEndpoints();
         endpoints.MapPostEndpoints();
@@ -27,6 +29,15 @@ public static class Endpoints
             
         endpoints.MapPublicGroup()
             .MapEndpoint<Up>();
+    }
+
+    private static void MapMonitorEndpoints(this IEndpointRouteBuilder app)
+    {
+        app.MapEndpoint<List>();
+        app.MapEndpoint<Create>();
+        app.MapEndpoint<Get>();
+        app.MapEndpoint<Update>();
+        app.MapEndpoint<Delete>();
     }
     
     private static RouteGroupBuilder MapPublicGroup(this IEndpointRouteBuilder app, string? prefix = null)
