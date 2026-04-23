@@ -26,6 +26,7 @@ public class List : IEndpoint
                 m.Id,
                 m.Name,
                 m.Url,
+                m.Port,
                 m.IntervalSeconds,
                 m.IsEnabled,
                 m.LastCheckedAt,

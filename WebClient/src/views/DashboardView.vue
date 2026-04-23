@@ -1,4 +1,4 @@
-<script setup lang="ts">
+  <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
@@ -6,7 +6,7 @@ import { useMonitorStore } from '@/stores/monitors'
 import { 
   Monitor, Globe, Activity, ShieldAlert, Settings, LogOut, Search, Bell, 
   ChevronDown, CheckCircle2, AlertCircle, XCircle, Clock, Zap, Link,
-  Menu, X, ArrowUpRight, Plus, Trash2, Loader2, ExternalLink, Pencil
+  Menu, X, Plus, Trash2, Loader2, ExternalLink, Pencil
 } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -22,8 +22,9 @@ const isEditModalOpen = ref(false)
 
 // Add Monitor Form
 const newMonitor = ref({
-  name: '',
+  name: '', 
   url: '',
+  port: undefined as number | undefined,
   intervalSeconds: 60
 })
 
@@ -32,6 +33,7 @@ const editingMonitor = ref({
   id: '',
   name: '',
   url: '',
+  port: undefined as number | undefined,
   intervalSeconds: 60,
   isEnabled: true
 })
@@ -92,15 +94,20 @@ const handleLogout = () => {
 
 const handleAddMonitor = async () => {
   monitorStore.error = null
+  
+  // Ensure port is a number or null
+  const portValue = newMonitor.value.port === '' || newMonitor.value.port === undefined ? null : Number(newMonitor.value.port)
+
   const success = await monitorStore.createMonitor({
     name: newMonitor.value.name,
     url: newMonitor.value.url,
+    port: portValue,
     intervalSeconds: newMonitor.value.intervalSeconds
   })
   
   if (success) {
     isAddModalOpen.value = false
-    newMonitor.value = { name: '', url: '', intervalSeconds: 60 }
+    newMonitor.value = { name: '', url: '', port: undefined, intervalSeconds: 60 }
   }
 }
 
@@ -117,6 +124,7 @@ const handleEditMonitor = (monitor: any) => {
     id: monitor.id,
     name: monitor.name,
     url: monitor.url,
+    port: monitor.port ?? undefined,
     intervalSeconds: monitor.intervalSeconds,
     isEnabled: monitor.isEnabled
   }
@@ -125,9 +133,14 @@ const handleEditMonitor = (monitor: any) => {
 
 const handleUpdateMonitor = async () => {
   monitorStore.error = null
+  
+  // Ensure port is a number or null
+  const portValue = editingMonitor.value.port === '' || editingMonitor.value.port === undefined || editingMonitor.value.port === null ? null : Number(editingMonitor.value.port)
+
   const success = await monitorStore.updateMonitor(editingMonitor.value.id, {
     name: editingMonitor.value.name,
     url: editingMonitor.value.url,
+    port: portValue,
     intervalSeconds: editingMonitor.value.intervalSeconds,
     isEnabled: editingMonitor.value.isEnabled
   })
@@ -325,11 +338,16 @@ const formatLastChecked = (date: string | null) => {
                   <td class="px-6 py-4">
                     <div class="flex flex-col">
                       <span class="font-bold text-foreground/90">{{ monitor.name }}</span>
-                      <a :href="monitor.url" target="_blank" class="text-xs text-muted-foreground flex items-center gap-1 hover:text-primary transition-colors">
-                        <Link class="w-3 h-3" />
-                        {{ monitor.url }}
-                        <ExternalLink class="w-2 h-2" />
-                      </a>
+                      <div class="flex items-center gap-2 mt-0.5">
+                        <a :href="monitor.url" target="_blank" class="text-xs text-muted-foreground flex items-center gap-1 hover:text-primary transition-colors text-nowrap">
+                          <Link class="w-3 h-3" />
+                          {{ monitor.url }}
+                          <ExternalLink class="w-2 h-2" />
+                        </a>
+                        <span v-if="monitor.port" class="px-1.5 py-0.5 rounded bg-primary/5 text-[10px] font-mono font-bold text-primary border border-primary/10">
+                          PORT: {{ monitor.port }}
+                        </span>
+                      </div>
                     </div>
                   </td>
                   <td class="px-6 py-4">
@@ -387,6 +405,10 @@ const formatLastChecked = (date: string | null) => {
             <Input id="url" v-model="newMonitor.url" placeholder="https://api.example.com/health" />
           </div>
           <div class="space-y-2">
+            <Label for="port">Port (optional)</Label>
+            <Input id="port" type="number" v-model="newMonitor.port" placeholder="e.g. 8080" />
+          </div>
+          <div class="space-y-2">
             <Label for="interval">Check Interval (seconds)</Label>
             <Input id="interval" type="number" v-model="newMonitor.intervalSeconds" />
           </div>
@@ -424,6 +446,10 @@ const formatLastChecked = (date: string | null) => {
           <div class="space-y-2">
             <Label for="edit-url">URL</Label>
             <Input id="edit-url" v-model="editingMonitor.url" />
+          </div>
+          <div class="space-y-2">
+            <Label for="edit-port">Port (optional)</Label>
+            <Input id="edit-port" type="number" v-model="editingMonitor.port" />
           </div>
           <div class="space-y-2">
             <Label for="edit-interval">Check Interval (seconds)</Label>

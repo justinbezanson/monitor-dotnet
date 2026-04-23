@@ -8,6 +8,7 @@ public class Monitor
     public string UserId { get; set; } = null!;
     public string Name { get; set; } = null!;
     public string Url { get; set; } = null!;
+    public int? Port { get; set; }
     public int IntervalSeconds { get; set; } = 60;
     public bool IsEnabled { get; set; } = true;
     public DateTime? LastCheckedAt { get; set; }

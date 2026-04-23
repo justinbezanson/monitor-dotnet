@@ -34,6 +34,7 @@ public class Get : IEndpoint
             monitor.Id,
             monitor.Name,
             monitor.Url,
+            monitor.Port,
             monitor.IntervalSeconds,
             monitor.IsEnabled,
             monitor.LastCheckedAt,

@@ -30,6 +30,8 @@ public class ApplicationDbContext : IdentityDbContext<IdentityUser>
                   .WithOne(c => c.Monitor)
                   .HasForeignKey(c => c.MonitorId)
                   .OnDelete(DeleteBehavior.Cascade);
+
+            entity.Property(m => m.Port);
         });
     }
 }

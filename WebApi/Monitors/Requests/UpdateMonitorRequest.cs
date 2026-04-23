@@ -1,8 +1,10 @@
 namespace WebApi.Monitors.Requests;
 
-public record UpdateMonitorRequest(
-    string Name,
-    string Url,
-    int IntervalSeconds,
-    bool IsEnabled
-);
+public class UpdateMonitorRequest
+{
+    public string Name { get; set; } = null!;
+    public string Url { get; set; } = null!;
+    public int? Port { get; set; }
+    public int IntervalSeconds { get; set; }
+    public bool IsEnabled { get; set; }
+}

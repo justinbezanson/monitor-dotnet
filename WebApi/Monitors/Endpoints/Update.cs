@@ -33,6 +33,7 @@ public class Update : IEndpoint
 
         monitor.Name = request.Name;
         monitor.Url = request.Url;
+        monitor.Port = request.Port;
         monitor.IntervalSeconds = request.IntervalSeconds;
         monitor.IsEnabled = request.IsEnabled;
 
@@ -42,6 +43,7 @@ public class Update : IEndpoint
             monitor.Id,
             monitor.Name,
             monitor.Url,
+            monitor.Port,
             monitor.IntervalSeconds,
             monitor.IsEnabled,
             monitor.LastCheckedAt,

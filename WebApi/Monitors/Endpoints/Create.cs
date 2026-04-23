@@ -27,6 +27,7 @@ public class Create : IEndpoint
             UserId = userId,
             Name = request.Name,
             Url = request.Url,
+            Port = request.Port,
             IntervalSeconds = request.IntervalSeconds,
             IsEnabled = true,
             CurrentStatus = "Pending"
@@ -39,6 +40,7 @@ public class Create : IEndpoint
             monitor.Id,
             monitor.Name,
             monitor.Url,
+            monitor.Port,
             monitor.IntervalSeconds,
             monitor.IsEnabled,
             monitor.LastCheckedAt,

@@ -2,6 +2,7 @@ export interface Monitor {
   id: string
   name: string
   url: string
+  port: number | null
   intervalSeconds: number
   isEnabled: boolean
   lastCheckedAt: string | null
@@ -24,12 +25,14 @@ export interface MonitorDetail extends Monitor {
 export interface CreateMonitorRequest {
   name: string
   url: string
+  port: number | null
   intervalSeconds: number
 }
 
 export interface UpdateMonitorRequest {
   name: string
   url: string
+  port: number | null
   intervalSeconds: number
   isEnabled: boolean
 }
