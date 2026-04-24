@@ -162,15 +162,15 @@ const closeEditModal = () => {
 
 const formatLastChecked = (date: string | null) => {
   if (!date) return 'Never'
-  
-  const checked = new Date(date)
+
+  const checked = new Date(date.endsWith('Z') ? date : date + 'Z');
   const now = new Date()
   
   if (isNaN(checked.getTime())) return 'Invalid Date'
   
   // Calculate difference in seconds
   const diff = Math.floor((now.getTime() - checked.getTime()) / 1000)
-  console.log(diff);
+  
   // Handle negative or zero diffs (future dates or clock skew) by treating as "Just now"
   if (diff <= 0) return 'Just now'
   
