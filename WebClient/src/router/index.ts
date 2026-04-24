@@ -22,6 +22,12 @@ const router = createRouter({
       component: () => import('@/views/DashboardView.vue'),
       meta: { auth: true },
     },
+    {
+      path: '/monitor/:id',
+      name: 'monitor-detail',
+      component: () => import('@/views/MonitorDetailView.vue'),
+      meta: { auth: true },
+    },
     // Catch-all
     {
       path: '/:pathMatch(.*)*',

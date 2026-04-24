@@ -8,5 +8,6 @@ public record MonitorResponse(
     int IntervalSeconds,
     bool IsEnabled,
     DateTime? LastCheckedAt,
-    string CurrentStatus
+    string CurrentStatus,
+    int? LastResponseTimeMs
 );

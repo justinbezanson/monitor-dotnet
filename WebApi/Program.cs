@@ -34,6 +34,11 @@ builder.Services.AddIdentityCore<IdentityUser>()
 builder.Services.AddAuthentication().AddBearerToken(IdentityConstants.BearerScheme);
 builder.Services.AddAuthorization();
 builder.Services.AddControllers();
+builder.Services.AddHttpClient();
+
+// --- Monitoring Services ---
+builder.Services.AddScoped<WebApi.Monitors.Services.MonitoringService>();
+builder.Services.AddHostedService<WebApi.Monitors.Services.MonitorWorker>();
 
 // Single AddOpenApi call with the Document Transformer
 builder.Services.AddOpenApi(options =>

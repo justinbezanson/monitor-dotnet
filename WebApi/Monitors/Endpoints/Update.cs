@@ -47,7 +47,12 @@ public class Update : IEndpoint
             monitor.IntervalSeconds,
             monitor.IsEnabled,
             monitor.LastCheckedAt,
-            monitor.CurrentStatus
+            monitor.CurrentStatus,
+            await database.MonitorChecks
+                .Where(c => c.MonitorId == monitor.Id)
+                .OrderByDescending(c => c.Timestamp)
+                .Select(c => (int?)c.ResponseTimeMs)
+                .FirstOrDefaultAsync(ct)
         );
 
         return TypedResults.Ok(response);

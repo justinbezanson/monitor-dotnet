@@ -30,7 +30,8 @@ public class List : IEndpoint
                 m.IntervalSeconds,
                 m.IsEnabled,
                 m.LastCheckedAt,
-                m.CurrentStatus
+                m.CurrentStatus,
+                m.Checks.OrderByDescending(c => c.Timestamp).Select(c => (int?)c.ResponseTimeMs).FirstOrDefault()
             ))
             .ToListAsync(ct);
 

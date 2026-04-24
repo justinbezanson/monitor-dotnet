@@ -7,6 +7,7 @@ export interface Monitor {
   isEnabled: boolean
   lastCheckedAt: string | null
   currentStatus: string
+  lastResponseTimeMs: number | null
 }
 
 export interface MonitorCheck {

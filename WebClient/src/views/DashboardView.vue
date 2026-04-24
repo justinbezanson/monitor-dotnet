@@ -6,7 +6,7 @@ import { useMonitorStore } from '@/stores/monitors'
 import { 
   Monitor, Globe, Activity, ShieldAlert, Settings, LogOut, Search, Bell, 
   ChevronDown, CheckCircle2, AlertCircle, XCircle, Clock, Zap, Link,
-  Menu, X, Plus, Trash2, Loader2, ExternalLink, Pencil
+  Menu, X, Plus, Trash2, Loader2, ExternalLink, Pencil, BarChart3
 } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -96,7 +96,7 @@ const handleAddMonitor = async () => {
   monitorStore.error = null
   
   // Ensure port is a number or null
-  const portValue = newMonitor.value.port === '' || newMonitor.value.port === undefined ? null : Number(newMonitor.value.port)
+  const portValue = (newMonitor.value.port as any) === '' || newMonitor.value.port === undefined ? null : Number(newMonitor.value.port)
 
   const success = await monitorStore.createMonitor({
     name: newMonitor.value.name,
@@ -135,7 +135,7 @@ const handleUpdateMonitor = async () => {
   monitorStore.error = null
   
   // Ensure port is a number or null
-  const portValue = editingMonitor.value.port === '' || editingMonitor.value.port === undefined || editingMonitor.value.port === null ? null : Number(editingMonitor.value.port)
+  const portValue = (editingMonitor.value.port as any) === '' || editingMonitor.value.port === undefined || editingMonitor.value.port === null ? null : Number(editingMonitor.value.port)
 
   const success = await monitorStore.updateMonitor(editingMonitor.value.id, {
     name: editingMonitor.value.name,
@@ -162,13 +162,23 @@ const closeEditModal = () => {
 
 const formatLastChecked = (date: string | null) => {
   if (!date) return 'Never'
-  const now = new Date()
+  
   const checked = new Date(date)
+  const now = new Date()
+  
+  if (isNaN(checked.getTime())) return 'Invalid Date'
+  
+  // Calculate difference in seconds
   const diff = Math.floor((now.getTime() - checked.getTime()) / 1000)
+  console.log(diff);
+  // Handle negative or zero diffs (future dates or clock skew) by treating as "Just now"
+  if (diff <= 0) return 'Just now'
   
   if (diff < 60) return `${diff}s ago`
   if (diff < 3600) return `${Math.floor(diff / 60)}m ago`
-  return checked.toLocaleTimeString()
+  if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`
+  
+  return checked.toLocaleDateString()
 }
 </script>
 
@@ -324,6 +334,7 @@ const formatLastChecked = (date: string | null) => {
                   <th class="px-6 py-4">Endpoint</th>
                   <th class="px-6 py-4">Status</th>
                   <th class="px-6 py-4 text-center">Interval</th>
+                  <th class="px-6 py-4 text-center">Avg Latency</th>
                   <th class="px-6 py-4">Last Check</th>
                   <th class="px-6 py-4 text-right">Actions</th>
                 </tr>
@@ -337,7 +348,9 @@ const formatLastChecked = (date: string | null) => {
                 <tr v-for="monitor in monitorStore.monitors" :key="monitor.id" class="hover:bg-muted/20 transition-all group">
                   <td class="px-6 py-4">
                     <div class="flex flex-col">
-                      <span class="font-bold text-foreground/90">{{ monitor.name }}</span>
+                      <span class="font-bold text-foreground/90 cursor-pointer hover:text-primary transition-colors" @click="router.push(`/monitor/${monitor.id}`)">
+                        {{ monitor.name }}
+                      </span>
                       <div class="flex items-center gap-2 mt-0.5">
                         <a :href="monitor.url" target="_blank" class="text-xs text-muted-foreground flex items-center gap-1 hover:text-primary transition-colors text-nowrap">
                           <Link class="w-3 h-3" />
@@ -361,9 +374,22 @@ const formatLastChecked = (date: string | null) => {
                       {{ monitor.intervalSeconds }}s
                     </span>
                   </td>
+                  <td class="px-6 py-4 text-center font-mono text-xs">
+                    <span v-if="monitor.lastResponseTimeMs !== null" :class="[
+                      'font-bold',
+                      monitor.lastResponseTimeMs < 300 ? 'text-green-500' : 
+                      monitor.lastResponseTimeMs < 1000 ? 'text-yellow-500' : 'text-red-500'
+                    ]">
+                      {{ monitor.lastResponseTimeMs }}ms
+                    </span>
+                    <span v-else class="text-muted-foreground">-</span>
+                  </td>
                   <td class="px-6 py-4 text-muted-foreground font-mono text-xs">{{ formatLastChecked(monitor.lastCheckedAt) }}</td>
                   <td class="px-6 py-4 text-right">
                     <div class="flex items-center justify-end gap-1">
+                      <Button variant="ghost" size="icon" class="h-8 w-8 rounded-lg hover:text-primary" title="View Report" @click="router.push(`/monitor/${monitor.id}`)">
+                        <BarChart3 class="h-4 w-4" />
+                      </Button>
                       <Button variant="ghost" size="icon" class="h-8 w-8 rounded-lg hover:text-primary" @click="handleEditMonitor(monitor)">
                         <Pencil class="h-4 w-4" />
                       </Button>

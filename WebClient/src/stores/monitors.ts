@@ -1,10 +1,11 @@
 import { defineStore } from 'pinia'
 import { monitorsService } from '@/lib/api/monitors'
-import type { Monitor, CreateMonitorRequest, UpdateMonitorRequest } from '@/lib/api/monitors.types'
+import type { Monitor, MonitorDetail, CreateMonitorRequest, UpdateMonitorRequest } from '@/lib/api/monitors.types'
 
 export const useMonitorStore = defineStore('monitors', {
   state: () => ({
     monitors: [] as Monitor[],
+    currentMonitor: null as MonitorDetail | null,
     loading: false,
     error: null as string | null,
   }),
@@ -16,6 +17,17 @@ export const useMonitorStore = defineStore('monitors', {
         this.monitors = await monitorsService.list()
       } catch (err: any) {
         this.error = err.response?.data?.message || 'Failed to fetch monitors.'
+      } finally {
+        this.loading = false
+      }
+    },
+    async fetchMonitorDetail(id: string) {
+      this.loading = true
+      this.error = null
+      try {
+        this.currentMonitor = await monitorsService.get(id)
+      } catch (err: any) {
+        this.error = err.response?.data?.message || 'Failed to fetch monitor detail.'
       } finally {
         this.loading = false
       }
