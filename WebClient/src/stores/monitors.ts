@@ -6,28 +6,34 @@ export const useMonitorStore = defineStore('monitors', {
   state: () => ({
     monitors: [] as Monitor[],
     currentMonitor: null as MonitorDetail | null,
+    checksPage: 1,
+    checksPageSize: 20,
     loading: false,
     error: null as string | null,
   }),
   actions: {
-    async fetchMonitors() {
+    async fetchMonitors(page = 1, pageSize = 20) {
       this.loading = true
       this.error = null
       try {
-        this.monitors = await monitorsService.list()
+        this.monitors = await monitorsService.list(page, pageSize)
       } catch (err: any) {
         this.error = err.response?.data?.message || 'Failed to fetch monitors.'
       } finally {
         this.loading = false
       }
     },
-    async fetchMonitorDetail(id: string) {
+    async fetchMonitorDetail(id: string, page = 1, pageSize = 20) {
       this.loading = true
       this.error = null
+      this.checksPage = page
+      this.checksPageSize = pageSize
       try {
-        this.currentMonitor = await monitorsService.get(id)
+        const data = await monitorsService.get(id, page, pageSize)
+        this.currentMonitor = data
       } catch (err: any) {
         this.error = err.response?.data?.message || 'Failed to fetch monitor detail.'
+        console.error('Failed to fetch monitor detail:', err)
       } finally {
         this.loading = false
       }

@@ -1,24 +1,60 @@
 <script setup lang="ts">
-import { onMounted, computed } from 'vue'
+import { onMounted, computed, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useMonitorStore } from '@/stores/monitors'
 import { 
   ArrowLeft, CheckCircle2, XCircle, Clock, 
   ExternalLink, Link, Calendar, Zap, AlertCircle, RefreshCw,
-  BarChart3, Shield, Info
+  BarChart3, Shield, Info, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight
 } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Label } from '@/components/ui/label'
 
 const route = useRoute()
 const router = useRouter()
 const monitorStore = useMonitorStore()
-const monitorId = route.params.id as string
+const monitorId = computed(() => route.params.id as string)
 
 const monitor = computed(() => monitorStore.currentMonitor)
+const checks = computed(() => monitor.value?.checks)
 
-onMounted(async () => {
-  await monitorStore.fetchMonitorDetail(monitorId)
+const loadMonitor = () => {
+  monitorStore.fetchMonitorDetail(monitorId.value)
+}
+
+onMounted(loadMonitor)
+watch(monitorId, loadMonitor)
+
+const goToPage = (page: number) => {
+  monitorStore.fetchMonitorDetail(monitorId.value, page, monitorStore.checksPageSize)
+}
+
+const goToFirstPage = () => goToPage(1)
+const goToLastPage = () => {
+  if (checks.value) goToPage(checks.value.totalPages)
+}
+const goToPreviousPage = () => {
+  if (checks.value && checks.value.hasPreviousPage) goToPage(checks.value.pageNumber - 1)
+}
+const goToNextPage = () => {
+  if (checks.value && checks.value.hasNextPage) goToPage(checks.value.pageNumber + 1)
+}
+
+const visiblePages = computed(() => {
+  if (!checks.value) return []
+  const { pageNumber: current, totalPages } = checks.value
+  const pages: (number | '...')[] = []
+  const range = 2
+
+  for (let i = 1; i <= totalPages; i++) {
+    if (i === 1 || i === totalPages || (i >= current - range && i <= current + range)) {
+      pages.push(i)
+    } else if (pages[pages.length - 1] !== '...') {
+      pages.push('...')
+    }
+  }
+  return pages
 })
 
 const getStatusColor = (status: string | undefined) => {
@@ -48,15 +84,17 @@ const formatDateTime = (date: string) => {
 }
 
 const uptimePercentage = computed(() => {
-  if (!monitor.value || monitor.value.recentChecks.length === 0) return '100%'
-  const successCount = monitor.value.recentChecks.filter(c => c.isSuccess).length
-  return ((successCount / monitor.value.recentChecks.length) * 100).toFixed(1) + '%'
+  const items = checks.value?.items
+  if (!items || items.length === 0) return '100%'
+  const successCount = items.filter(c => c.isSuccess).length
+  return ((successCount / items.length) * 100).toFixed(1) + '%'
 })
 
 const averageResponseTime = computed(() => {
-  if (!monitor.value || monitor.value.recentChecks.length === 0) return '0ms'
-  const total = monitor.value.recentChecks.reduce((acc, c) => acc + c.responseTimeMs, 0)
-  return Math.round(total / monitor.value.recentChecks.length) + 'ms'
+  const items = checks.value?.items
+  if (!items || items.length === 0) return '0ms'
+  const total = items.reduce((acc, c) => acc + c.responseTimeMs, 0)
+  return Math.round(total / items.length) + 'ms'
 })
 
 </script>
@@ -86,7 +124,7 @@ const averageResponseTime = computed(() => {
         </div>
       </div>
       <div class="flex gap-2">
-        <Button variant="outline" class="rounded-xl" @click="monitorStore.fetchMonitorDetail(monitorId)" :disabled="monitorStore.loading">
+        <Button variant="outline" class="rounded-xl" @click="loadMonitor" :disabled="monitorStore.loading">
           <RefreshCw :class="['w-4 h-4 mr-2', monitorStore.loading ? 'animate-spin' : '']" />
           Refresh Report
         </Button>
@@ -97,13 +135,17 @@ const averageResponseTime = computed(() => {
       {{ monitorStore.error }}
     </div>
 
+    <div v-if="monitorStore.loading" class="max-w-7xl mx-auto w-full flex items-center justify-center py-24">
+      <RefreshCw class="w-8 h-8 animate-spin text-muted-foreground" />
+    </div>
+
     <div v-if="monitor" class="max-w-7xl mx-auto w-full space-y-8">
       <!-- Stats Summary -->
       <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         <Card class="rounded-2xl overflow-hidden shadow-sm border-border/50">
           <CardHeader class="pb-2">
             <CardDescription class="flex items-center gap-2">
-              <Shield class="w-4 h-4" /> Uptime (Last 20)
+              <Shield class="w-4 h-4" /> Uptime (Current Page)
             </CardDescription>
             <CardTitle class="text-2xl font-bold text-green-500">{{ uptimePercentage }}</CardTitle>
           </CardHeader>
@@ -146,8 +188,12 @@ const averageResponseTime = computed(() => {
           <CardHeader class="bg-muted/30 border-b">
             <div class="flex items-center justify-between">
               <div>
-                <CardTitle class="text-lg">Recent Check History</CardTitle>
-                <CardDescription>Detailed logs of the last 20 health checks.</CardDescription>
+                <CardTitle class="text-lg">Check History (Last 30 Days)</CardTitle>
+                <CardDescription v-if="checks">
+                  Showing {{ checks.items.length }} of {{ checks.totalCount }} checks
+                  &middot; Page {{ checks.pageNumber }} of {{ checks.totalPages }}
+                </CardDescription>
+                <CardDescription v-else>Loading check history...</CardDescription>
               </div>
               <BarChart3 class="w-5 h-5 text-muted-foreground opacity-50" />
             </div>
@@ -165,7 +211,7 @@ const averageResponseTime = computed(() => {
                   </tr>
                 </thead>
                 <tbody class="divide-y divide-border/50">
-                  <tr v-for="check in monitor.recentChecks" :key="check.id" class="hover:bg-muted/20 transition-all">
+                  <tr v-for="check in checks?.items ?? []" :key="check.id" class="hover:bg-muted/20 transition-all">
                     <td class="px-6 py-4 font-mono text-xs text-muted-foreground">
                       {{ formatDateTime(check.timestamp) }}
                     </td>
@@ -189,13 +235,44 @@ const averageResponseTime = computed(() => {
                       {{ check.errorMessage || 'None' }}
                     </td>
                   </tr>
-                  <tr v-if="monitor.recentChecks.length === 0">
+                  <tr v-if="checks?.items.length === 0">
                     <td colspan="5" class="px-6 py-12 text-center text-muted-foreground">
-                      No check history available yet.
+                      No check history available for the last 30 days.
                     </td>
                   </tr>
                 </tbody>
               </table>
+            </div>
+
+            <!-- Pagination Controls -->
+            <div v-if="checks && checks.totalPages > 1" class="flex items-center justify-between px-6 py-4 border-t bg-muted/10">
+              <p class="text-xs text-muted-foreground">
+                {{ ((checks.pageNumber - 1) * checks.pageSize) + 1 }}&ndash;{{ Math.min(checks.pageNumber * checks.pageSize, checks.totalCount) }} of {{ checks.totalCount }}
+              </p>
+              <div class="flex items-center gap-1">
+                <Button variant="outline" size="icon" class="h-8 w-8 rounded-lg" :disabled="!checks.hasPreviousPage" @click="goToFirstPage">
+                  <ChevronsLeft class="w-4 h-4" />
+                </Button>
+                <Button variant="outline" size="icon" class="h-8 w-8 rounded-lg" :disabled="!checks.hasPreviousPage" @click="goToPreviousPage">
+                  <ChevronLeft class="w-4 h-4" />
+                </Button>
+
+                <template v-for="(page, idx) in visiblePages" :key="idx">
+                  <span v-if="page === '...'" class="px-1 text-muted-foreground text-sm">&hellip;</span>
+                  <Button v-else variant="outline" size="sm"
+                    :class="['h-8 min-w-8 rounded-lg text-xs', page === checks.pageNumber ? 'bg-primary text-primary-foreground border-primary' : '']"
+                    @click="goToPage(page as number)">
+                    {{ page }}
+                  </Button>
+                </template>
+
+                <Button variant="outline" size="icon" class="h-8 w-8 rounded-lg" :disabled="!checks.hasNextPage" @click="goToNextPage">
+                  <ChevronRight class="w-4 h-4" />
+                </Button>
+                <Button variant="outline" size="icon" class="h-8 w-8 rounded-lg" :disabled="!checks.hasNextPage" @click="goToLastPage">
+                  <ChevronsRight class="w-4 h-4" />
+                </Button>
+              </div>
             </div>
           </CardContent>
         </Card>

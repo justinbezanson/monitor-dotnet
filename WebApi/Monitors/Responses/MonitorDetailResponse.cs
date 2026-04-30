@@ -9,5 +9,5 @@ public record MonitorDetailResponse(
     bool IsEnabled,
     DateTime? LastCheckedAt,
     string CurrentStatus,
-    IEnumerable<MonitorCheckResponse> RecentChecks
+    PaginatedResult<MonitorCheckResponse> Checks
 );

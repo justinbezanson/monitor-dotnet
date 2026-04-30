@@ -29,6 +29,8 @@ public static class Endpoints
             
         endpoints.MapPublicGroup()
             .MapEndpoint<Up>();
+        
+        
     }
 
     private static void MapMonitorEndpoints(this IEndpointRouteBuilder app)

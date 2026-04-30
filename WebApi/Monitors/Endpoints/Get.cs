@@ -15,6 +15,7 @@ public class Get : IEndpoint
 
     private static async Task<Results<Ok<MonitorDetailResponse>, NotFound>> Handle(
         Guid id,
+        [AsParameters] ChecksQuery query,
         ClaimsPrincipal user,
         ApplicationDbContext database,
         CancellationToken ct)
@@ -22,13 +23,32 @@ public class Get : IEndpoint
         var userId = user.FindFirstValue(ClaimTypes.NameIdentifier)!;
 
         var monitor = await database.Monitors
-            .Include(m => m.Checks.OrderByDescending(c => c.Timestamp).Take(20))
             .FirstOrDefaultAsync(m => m.Id == id && m.UserId == userId, ct);
 
         if (monitor is null)
         {
             return TypedResults.NotFound();
         }
+
+        var fromDate = DateTime.UtcNow.AddDays(-30);
+        var checksQuery = database.MonitorChecks
+            .Where(c => c.MonitorId == id && c.Timestamp >= fromDate)
+            .OrderByDescending(c => c.Timestamp);
+
+        var totalCount = await checksQuery.CountAsync(ct);
+
+        var checks = await checksQuery
+            .Skip((query.Page - 1) * query.PageSize)
+            .Take(query.PageSize)
+            .Select(c => new MonitorCheckResponse(
+                c.Id,
+                c.Timestamp,
+                c.IsSuccess,
+                c.StatusCode,
+                c.ResponseTimeMs,
+                c.ErrorMessage
+            ))
+            .ToListAsync(ct);
 
         var response = new MonitorDetailResponse(
             monitor.Id,
@@ -39,16 +59,19 @@ public class Get : IEndpoint
             monitor.IsEnabled,
             monitor.LastCheckedAt,
             monitor.CurrentStatus,
-            monitor.Checks.Select(c => new MonitorCheckResponse(
-                c.Id,
-                c.Timestamp,
-                c.IsSuccess,
-                c.StatusCode,
-                c.ResponseTimeMs,
-                c.ErrorMessage
-            ))
+            new PaginatedResult<MonitorCheckResponse>(
+                checks,
+                query.Page,
+                query.PageSize,
+                totalCount
+            )
         );
 
         return TypedResults.Ok(response);
     }
+
+    public record ChecksQuery(
+        int Page = 1,
+        int PageSize = 20
+    );
 }

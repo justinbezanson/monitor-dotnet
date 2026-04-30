@@ -7,16 +7,16 @@ import type {
 } from './monitors.types'
 
 export const monitorsService = {
-  list: async (): Promise<Monitor[]> => {
-    const response = await api.get('/api/monitors')
-    return response.data
+  list: async (page = 1, pageSize = 20): Promise<Monitor[]> => {
+    const response = await api.get('/api/monitors', { params: { page, pageSize } })
+    return response.data.items ?? response.data
   },
   create: async (request: CreateMonitorRequest): Promise<Monitor> => {
     const response = await api.post('/api/monitors', request)
     return response.data
   },
-  get: async (id: string): Promise<MonitorDetail> => {
-    const response = await api.get(`/api/monitors/${id}`)
+  get: async (id: string, page = 1, pageSize = 20): Promise<MonitorDetail> => {
+    const response = await api.get(`/api/monitors/${id}`, { params: { page, pageSize } })
     return response.data
   },
   update: async (id: string, request: UpdateMonitorRequest): Promise<Monitor> => {

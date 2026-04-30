@@ -13,14 +13,15 @@ public class List : IEndpoint
         .WithTags("Monitors")
         .RequireAuthorization();
 
-    private static async Task<Ok<IEnumerable<MonitorResponse>>> Handle(
+    private static async Task<Ok<PaginatedResult<MonitorResponse>>> Handle(
+        [AsParameters] PaginationParams pagination,
         ClaimsPrincipal user,
         ApplicationDbContext database,
         CancellationToken ct)
     {
         var userId = user.FindFirstValue(ClaimTypes.NameIdentifier)!;
 
-        var monitors = await database.Monitors
+        var query = database.Monitors
             .Where(m => m.UserId == userId)
             .Select(m => new MonitorResponse(
                 m.Id,
@@ -32,9 +33,26 @@ public class List : IEndpoint
                 m.LastCheckedAt,
                 m.CurrentStatus,
                 m.Checks.OrderByDescending(c => c.Timestamp).Select(c => (int?)c.ResponseTimeMs).FirstOrDefault()
-            ))
+            ));
+
+        var totalCount = await query.CountAsync(ct);
+
+        var monitors = await query
+            .OrderBy(m => m.Name)
+            .Skip((pagination.Page - 1) * pagination.PageSize)
+            .Take(pagination.PageSize)
             .ToListAsync(ct);
 
-        return TypedResults.Ok(monitors.AsEnumerable());
+        return TypedResults.Ok(new PaginatedResult<MonitorResponse>(
+            monitors,
+            pagination.Page,
+            pagination.PageSize,
+            totalCount
+        ));
     }
+
+    public record PaginationParams(
+        int Page = 1,
+        int PageSize = 20
+    );
 }

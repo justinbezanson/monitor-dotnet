@@ -1,3 +1,13 @@
+export interface PaginatedResult<T> {
+  items: T[]
+  pageNumber: number
+  pageSize: number
+  totalCount: number
+  totalPages: number
+  hasPreviousPage: boolean
+  hasNextPage: boolean
+}
+
 export interface Monitor {
   id: string
   name: string
@@ -20,7 +30,7 @@ export interface MonitorCheck {
 }
 
 export interface MonitorDetail extends Monitor {
-  recentChecks: MonitorCheck[]
+  checks: PaginatedResult<MonitorCheck>
 }
 
 export interface CreateMonitorRequest {
