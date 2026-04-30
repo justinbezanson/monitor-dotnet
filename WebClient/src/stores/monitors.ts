@@ -29,11 +29,9 @@ export const useMonitorStore = defineStore('monitors', {
       this.checksPage = page
       this.checksPageSize = pageSize
       try {
-        const data = await monitorsService.get(id, page, pageSize)
-        this.currentMonitor = data
+        this.currentMonitor = await monitorsService.get(id, page, pageSize)
       } catch (err: any) {
         this.error = err.response?.data?.message || 'Failed to fetch monitor detail.'
-        console.error('Failed to fetch monitor detail:', err)
       } finally {
         this.loading = false
       }

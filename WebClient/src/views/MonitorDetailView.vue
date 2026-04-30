@@ -84,17 +84,13 @@ const formatDateTime = (date: string) => {
 }
 
 const uptimePercentage = computed(() => {
-  const items = checks.value?.items
-  if (!items || items.length === 0) return '100%'
-  const successCount = items.filter(c => c.isSuccess).length
-  return ((successCount / items.length) * 100).toFixed(1) + '%'
+  if (!monitor.value) return '100%'
+  return monitor.value.uptimePercentage30Days.toFixed(1) + '%'
 })
 
 const averageResponseTime = computed(() => {
-  const items = checks.value?.items
-  if (!items || items.length === 0) return '0ms'
-  const total = items.reduce((acc, c) => acc + c.responseTimeMs, 0)
-  return Math.round(total / items.length) + 'ms'
+  if (!monitor.value) return '0ms'
+  return Math.round(monitor.value.avgResponseTime30Days) + 'ms'
 })
 
 </script>
@@ -145,7 +141,7 @@ const averageResponseTime = computed(() => {
         <Card class="rounded-2xl overflow-hidden shadow-sm border-border/50">
           <CardHeader class="pb-2">
             <CardDescription class="flex items-center gap-2">
-              <Shield class="w-4 h-4" /> Uptime (Current Page)
+              <Shield class="w-4 h-4" /> Uptime (30 Days)
             </CardDescription>
             <CardTitle class="text-2xl font-bold text-green-500">{{ uptimePercentage }}</CardTitle>
           </CardHeader>
@@ -154,7 +150,7 @@ const averageResponseTime = computed(() => {
         <Card class="rounded-2xl overflow-hidden shadow-sm border-border/50">
           <CardHeader class="pb-2">
             <CardDescription class="flex items-center gap-2">
-              <Zap class="w-4 h-4" /> Avg. Latency
+              <Zap class="w-4 h-4" /> Avg. Latency (30 Days)
             </CardDescription>
             <CardTitle class="text-2xl font-bold text-primary">{{ averageResponseTime }}</CardTitle>
           </CardHeader>
@@ -190,8 +186,7 @@ const averageResponseTime = computed(() => {
               <div>
                 <CardTitle class="text-lg">Check History (Last 30 Days)</CardTitle>
                 <CardDescription v-if="checks">
-                  Showing {{ checks.items.length }} of {{ checks.totalCount }} checks
-                  &middot; Page {{ checks.pageNumber }} of {{ checks.totalPages }}
+                  Showing page {{ checks.pageNumber }} of {{ checks.totalPages }} &middot; {{ checks.totalCount }} checks in last 30 days
                 </CardDescription>
                 <CardDescription v-else>Loading check history...</CardDescription>
               </div>

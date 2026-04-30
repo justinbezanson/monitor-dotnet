@@ -9,5 +9,7 @@ public record MonitorDetailResponse(
     bool IsEnabled,
     DateTime? LastCheckedAt,
     string CurrentStatus,
+    double UptimePercentage30Days,
+    double AvgResponseTime30Days,
     PaginatedResult<MonitorCheckResponse> Checks
 );

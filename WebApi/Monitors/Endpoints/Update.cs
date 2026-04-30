@@ -39,6 +39,24 @@ public class Update : IEndpoint
 
         await database.SaveChangesAsync(ct);
 
+        var thirtyDaysAgo = DateTime.UtcNow.AddDays(-30);
+
+        var lastResponseTime = await database.MonitorChecks
+            .Where(c => c.MonitorId == monitor.Id)
+            .OrderByDescending(c => c.Timestamp)
+            .Select(c => (int?)c.ResponseTimeMs)
+            .FirstOrDefaultAsync(ct);
+
+        var totalChecks30d = await database.MonitorChecks
+            .CountAsync(c => c.MonitorId == monitor.Id && c.Timestamp >= thirtyDaysAgo, ct);
+
+        var successChecks30d = await database.MonitorChecks
+            .CountAsync(c => c.MonitorId == monitor.Id && c.Timestamp >= thirtyDaysAgo && c.IsSuccess, ct);
+
+        var avgResponseTime30d = await database.MonitorChecks
+            .Where(c => c.MonitorId == monitor.Id && c.Timestamp >= thirtyDaysAgo)
+            .AverageAsync(c => (double?)c.ResponseTimeMs, ct) ?? 0;
+
         var response = new MonitorResponse(
             monitor.Id,
             monitor.Name,
@@ -48,11 +66,9 @@ public class Update : IEndpoint
             monitor.IsEnabled,
             monitor.LastCheckedAt,
             monitor.CurrentStatus,
-            await database.MonitorChecks
-                .Where(c => c.MonitorId == monitor.Id)
-                .OrderByDescending(c => c.Timestamp)
-                .Select(c => (int?)c.ResponseTimeMs)
-                .FirstOrDefaultAsync(ct)
+            lastResponseTime,
+            totalChecks30d > 0 ? Math.Round((successChecks30d / (double)totalChecks30d) * 100, 1) : 100,
+            Math.Round(avgResponseTime30d)
         );
 
         return TypedResults.Ok(response);

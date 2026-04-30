@@ -18,6 +18,8 @@ export interface Monitor {
   lastCheckedAt: string | null
   currentStatus: string
   lastResponseTimeMs: number | null
+  uptimePercentage30Days: number
+  avgResponseTime30Days: number
 }
 
 export interface MonitorCheck {

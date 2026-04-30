@@ -32,12 +32,15 @@ public class Get : IEndpoint
 
         var fromDate = DateTime.UtcNow.AddDays(-30);
         var checksQuery = database.MonitorChecks
-            .Where(c => c.MonitorId == id && c.Timestamp >= fromDate)
-            .OrderByDescending(c => c.Timestamp);
+            .Where(c => c.MonitorId == id && c.Timestamp >= fromDate);
 
         var totalCount = await checksQuery.CountAsync(ct);
 
+        var successCount = await checksQuery.CountAsync(c => c.IsSuccess, ct);
+        var avgResponseTime = await checksQuery.AverageAsync(c => (double?)c.ResponseTimeMs, ct) ?? 0;
+
         var checks = await checksQuery
+            .OrderByDescending(c => c.Timestamp)
             .Skip((query.Page - 1) * query.PageSize)
             .Take(query.PageSize)
             .Select(c => new MonitorCheckResponse(
@@ -50,6 +53,8 @@ public class Get : IEndpoint
             ))
             .ToListAsync(ct);
 
+        var uptimePercentage = totalCount > 0 ? Math.Round((successCount / (double)totalCount) * 100, 1) : 100;
+
         var response = new MonitorDetailResponse(
             monitor.Id,
             monitor.Name,
@@ -59,6 +64,8 @@ public class Get : IEndpoint
             monitor.IsEnabled,
             monitor.LastCheckedAt,
             monitor.CurrentStatus,
+            uptimePercentage,
+            Math.Round(avgResponseTime),
             new PaginatedResult<MonitorCheckResponse>(
                 checks,
                 query.Page,

@@ -45,7 +45,9 @@ public class Create : IEndpoint
             monitor.IsEnabled,
             monitor.LastCheckedAt,
             monitor.CurrentStatus,
-            null
+            null,
+            100,
+            0
         );
 
         return TypedResults.Created($"/api/monitors/{monitor.Id}", response);

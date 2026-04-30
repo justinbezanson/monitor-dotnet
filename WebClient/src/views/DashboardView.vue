@@ -336,6 +336,7 @@ const formatLastChecked = (date: string | null) => {
                   <th class="px-6 py-4">Endpoint</th>
                   <th class="px-6 py-4">Status</th>
                   <th class="px-6 py-4 text-center">Interval</th>
+                  <th class="px-6 py-4 text-center">30d Uptime</th>
                   <th class="px-6 py-4 text-center">Avg Latency</th>
                   <th class="px-6 py-4">Last Check</th>
                   <th class="px-6 py-4 text-right">Actions</th>
@@ -343,7 +344,7 @@ const formatLastChecked = (date: string | null) => {
               </thead>
               <tbody class="divide-y divide-border/50">
                 <tr v-if="monitorStore.monitors.length === 0">
-                  <td colspan="5" class="px-6 py-12 text-center text-muted-foreground">
+                  <td colspan="7" class="px-6 py-12 text-center text-muted-foreground">
                     No monitors found. Click "Add New Monitor" to get started.
                   </td>
                 </tr>
@@ -376,13 +377,22 @@ const formatLastChecked = (date: string | null) => {
                       {{ monitor.intervalSeconds }}s
                     </span>
                   </td>
-                  <td class="px-6 py-4 text-center font-mono text-xs">
-                    <span v-if="monitor.lastResponseTimeMs !== null" :class="[
-                      'font-bold',
-                      monitor.lastResponseTimeMs < 300 ? 'text-green-500' : 
-                      monitor.lastResponseTimeMs < 1000 ? 'text-yellow-500' : 'text-red-500'
+                  <td class="px-6 py-4 text-center">
+                    <span :class="[
+                      'font-bold text-xs',
+                      monitor.uptimePercentage30Days >= 99 ? 'text-green-500' : 
+                      monitor.uptimePercentage30Days >= 95 ? 'text-yellow-500' : 'text-red-500'
                     ]">
-                      {{ monitor.lastResponseTimeMs }}ms
+                      {{ monitor.uptimePercentage30Days.toFixed(1) }}%
+                    </span>
+                  </td>
+                  <td class="px-6 py-4 text-center font-mono text-xs">
+                    <span v-if="monitor.avgResponseTime30Days > 0" :class="[
+                      'font-bold',
+                      monitor.avgResponseTime30Days < 300 ? 'text-green-500' : 
+                      monitor.avgResponseTime30Days < 1000 ? 'text-yellow-500' : 'text-red-500'
+                    ]">
+                      {{ Math.round(monitor.avgResponseTime30Days) }}ms
                     </span>
                     <span v-else class="text-muted-foreground">-</span>
                   </td>
